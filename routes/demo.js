@@ -82,11 +82,21 @@ router.post("/login", async function (req, res) {
     return res.redirect("/login");
   }
 
-  console.log("usuario autenticado !");
-  res.redirect("/admin");
+  // Express session salva a seção no banco de dados autometicamente !
+  req.session.user = { id: existingUser._id, email: existingUser.email };
+  req.session.isAuthenticated = true;
+  req.session.save(function () {
+    console.log("usuario autenticado !");
+    res.redirect("/admin");
+  });
 });
 
 router.get("/admin", function (req, res) {
+  if (!req.session.isAuthenticated) {
+    return res.status(401).render("401");
+  }
+
+  // Check the user "ticket"
   res.render("admin");
 });
 
