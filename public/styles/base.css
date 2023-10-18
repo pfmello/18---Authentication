@@ -91,3 +91,7 @@ a:active {
 .btn.btn-alt:active {
   background-color: rgb(231, 212, 246);
 }
+
+form {
+  margin-block-end: 0;
+}
