@@ -106,21 +106,42 @@ router.post("/login", async function (req, res) {
   }
 
   // Express session salva a seção no banco de dados autometicamente !
-  req.session.user = { id: existingUser._id, email: existingUser.email };
+  req.session.user = {
+    id: existingUser._id,
+    email: existingUser.email,
+  };
   req.session.isAuthenticated = true;
   req.session.save(function () {
     console.log("usuario autenticado !");
-    res.redirect("/admin");
+    res.redirect("/profile");
   });
 });
 
-router.get("/admin", function (req, res) {
+router.get("/admin", async function (req, res) {
+  if (!req.session.isAuthenticated) {
+    return res.status(401).render("401");
+  }
+
+  const user = await db
+    .getDb()
+    .collection("users")
+    .findOne({ _id: req.session.user.id });
+
+  if (!user || !user.isAdmin) {
+    return res.status(403).render("403");
+  }
+
+  // Check the user "ticket"
+  res.render("admin");
+});
+
+router.get("/profile", function (req, res) {
   if (!req.session.isAuthenticated) {
     return res.status(401).render("401");
   }
 
   // Check the user "ticket"
-  res.render("admin");
+  res.render("profile");
 });
 
 router.post("/logout", function (req, res) {
