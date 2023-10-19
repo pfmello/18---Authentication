@@ -26,7 +26,19 @@ router.get("/signup", function (req, res) {
 });
 
 router.get("/login", function (req, res) {
-  res.render("login");
+  let sessionInputData = req.session.inputData;
+
+  if (!sessionInputData) {
+    sessionInputData = {
+      hasError: false,
+      email: "",
+      password: "",
+    };
+  }
+
+  req.session.inputData = null;
+
+  res.render("login", { inputData: sessionInputData });
 });
 
 router.post("/signup", async function (req, res) {
@@ -65,7 +77,18 @@ router.post("/signup", async function (req, res) {
 
   if (existingUser) {
     console.log("usuario ja existente no banco de dados !");
-    return res.redirect("/signup");
+    req.session.inputData = {
+      hasError: true,
+      message: "user exists already",
+      email: enteredEmail,
+      confirmEmail: enteredConfirmEmail,
+      password: enteredPassword,
+    };
+    req.session.save(function () {
+      res.redirect("/signup");
+    });
+
+    return;
   }
 
   const hashedPassword = await bcrypt.hash(enteredPassword, 12);
@@ -91,8 +114,17 @@ router.post("/login", async function (req, res) {
     .findOne({ email: enteredEmail });
 
   if (!existingUser) {
-    console.log("email errado");
-    return res.redirect("/login");
+    req.session.inputData = {
+      hasError: true,
+      message: "user does not exist !",
+      email: enteredEmail,
+      password: enteredPassword,
+    };
+    req.session.save(function () {
+      res.redirect("/login");
+    });
+
+    return;
   }
 
   const validPassword = await bcrypt.compare(
@@ -102,7 +134,16 @@ router.post("/login", async function (req, res) {
 
   if (!validPassword) {
     console.log("senha errada !");
-    return res.redirect("/login");
+    req.session.inputData = {
+      hasError: true,
+      message: "wrong password !",
+      email: enteredEmail,
+      password: enteredPassword,
+    };
+    req.session.save(function () {
+      res.redirect("/login");
+    });
+    return;
   }
 
   // Express session salva a seção no banco de dados autometicamente !
@@ -118,16 +159,11 @@ router.post("/login", async function (req, res) {
 });
 
 router.get("/admin", async function (req, res) {
-  if (!req.session.isAuthenticated) {
+  if (!res.locals.isAuth) {
     return res.status(401).render("401");
   }
 
-  const user = await db
-    .getDb()
-    .collection("users")
-    .findOne({ _id: req.session.user.id });
-
-  if (!user || !user.isAdmin) {
+  if (!res.locals.isAdmin) {
     return res.status(403).render("403");
   }
 
@@ -136,7 +172,7 @@ router.get("/admin", async function (req, res) {
 });
 
 router.get("/profile", function (req, res) {
-  if (!req.session.isAuthenticated) {
+  if (!res.locals.isAuth) {
     return res.status(401).render("401");
   }
 
